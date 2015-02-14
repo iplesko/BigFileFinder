@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Big File Finder</string>
+    <string name="action_settings">Settings</string>
+    <string name="add_folder">Add folder</string>
+    <string name="start_search">Start search</string>
+    <string name="directory_already_in_list">This directory is already in the list</string>
+    <string name="parent_already_in_the_list">A parent of this directory is already in the list. No directory added.</string>
+    <string name="subdirectories_removed">Subdirectories of this directory were removed.</string>
+
+</resources>
