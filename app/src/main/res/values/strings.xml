@@ -9,5 +9,10 @@
     <string name="parent_already_in_the_list">A parent of this directory is already in the list. No directory added.</string>
     <string name="subdirectories_removed">Subdirectories of this directory were removed.</string>
     <string name="progress_info">Finished: %1$d%% (%2$d of %3$d)</string>
+    <string name="required_field">This field is required</string>
+    <string name="must_be_numeric">This has to be a number</string>
+    <string name="new_search">New search</string>
+    <string name="search_results">Search results</string>
+    <string name="preparing_search">Preparing search...</string>
 
 </resources>

@@ -1,5 +1,7 @@
 package sk.plesko.bigfilefinder;
 
+import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -9,7 +11,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
@@ -26,6 +31,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import sk.plesko.bigfilefinder.adapter.DirectoryListAdapter;
+import sk.plesko.bigfilefinder.helper.FileHelper;
 
 public class MainActivity extends ActionBarActivity implements DirectoryChooserFragment.OnFragmentInteractionListener {
 
@@ -33,14 +39,18 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private DirectoryChooserFragment mDialog;
     private DirectoryListAdapter mDirectoryListAdapter;
     private ListView mListView;
+    private ListView mSearchResultListView;
     private ViewGroup mSearchCriteriaView;
     private ViewGroup mProgressView;
+    private ViewGroup mSearchResults;
     private ProgressBar mProgressBar;
     private TextView mProgressText;
+    private EditText mNumberOfResults;
     private ConcurrentNavigableMap<Long, List<String>> fileMap;
     private int finished = 0;
     private int filesSearched = 0;
     private int totalFileCount = 0;
+    private int resultCount;
     private FileTraverseAsyncTask traverseTask1;
     private FileTraverseAsyncTask traverseTask2;
 
@@ -49,14 +59,20 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mSearchCriteriaView = (RelativeLayout) findViewById(R.id.searchCriteria);
-        mProgressView = (RelativeLayout) findViewById(R.id.searchProgress);
+        mSearchCriteriaView = (ViewGroup) findViewById(R.id.searchCriteria);
+        mProgressView = (ViewGroup) findViewById(R.id.searchProgress);
+        mSearchResults = (ViewGroup) findViewById(R.id.searchResults);
         mProgressText = (TextView) findViewById(R.id.progressText);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
+        mNumberOfResults = (EditText) findViewById(R.id.numberOfResults);
+
+        resultCount = Integer.valueOf(mNumberOfResults.getText().toString());
 
         mListView = (ListView) findViewById(R.id.directoryList);
         mDirectoryListAdapter = new DirectoryListAdapter(this, R.layout.directory_list_item, R.id.pathName);
         mListView.setAdapter(mDirectoryListAdapter);
+
+        mSearchResultListView = (ListView) findViewById(R.id.searchResultListView);
 
         fileMap = new ConcurrentSkipListMap<>(new Comparator<Long>() {
             @Override
@@ -76,9 +92,48 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             }
         });
 
+        findViewById(R.id.newSearchButton).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                init();
+            }
+        });
+
+        init();
+
+    }
+
+    private void init() {
+        mSearchCriteriaView.setVisibility(View.VISIBLE);
+        mProgressView.setVisibility(View.GONE);
+        mSearchResults.setVisibility(View.GONE);
+        finished = 0;
+        fileMap.clear();
+        filesSearched = 0;
+        totalFileCount = 0;
+        resultCount = 0;
+
+        mProgressBar.setProgress(0);
+        mProgressText.setText(R.string.preparing_search);
     }
 
     private void search() {
+
+        if ("".equals(mNumberOfResults.getText().toString().trim())) {
+            mNumberOfResults.setError(getString(R.string.required_field));
+            return;
+        }
+
+        try {
+            resultCount = Integer.valueOf(mNumberOfResults.getText().toString());
+        } catch (NumberFormatException e) {
+            mNumberOfResults.setError(getString(R.string.must_be_numeric));
+            mNumberOfResults.requestFocus();
+        }
+
+        // hide software keyboard
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+        inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
 
         mSearchCriteriaView.setVisibility(View.GONE);
         mProgressView.setVisibility(View.VISIBLE);
@@ -91,8 +146,6 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
                 mProgressBar.setMax(count);
 
                 OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
-                finished = 0;
-                fileMap.clear();
                 traverseTask1 = new FileTraverseAsyncTask(fileMap);
                 traverseTask2 = new FileTraverseAsyncTask(fileMap);
 
@@ -111,6 +164,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     }
 
     private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {
+
         @Override
         public synchronized void progressUpdate(int fileCount) {
             filesSearched += fileCount;
@@ -123,21 +177,28 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             finished++;
             Log.d(LOG_TAG, "FINISHED: " + finished);
             if (finished == 2) {
+
+                ArrayAdapter<String> resultsAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, android.R.id.text1);
+                mSearchResultListView.setAdapter(resultsAdapter);
+
                 int i = 1;
                 for (Map.Entry<Long, List<String>> fileMapEntry : fileMap.entrySet()) {
                     Long fileSize = fileMapEntry.getKey();
                     List<String> fileList = fileMapEntry.getValue();
-                    for (String file : fileList ) {
-                        Log.d(LOG_TAG, fileSize + ": " + file);
+                    for (String file : fileList) {
+                        resultsAdapter.add(file + " (" + FileHelper.humanReadableByteCount(fileSize, false) + ")");
                         i++;
-                        if (i > 3) {
+                        if (i > resultCount) {
                             break;
                         }
                     }
-                    if (i > 3) {
+                    if (i > resultCount) {
                         break;
                     }
                 }
+
+                mProgressView.setVisibility(View.GONE);
+                mSearchResults.setVisibility(View.VISIBLE);
             }
         }
     }
@@ -148,28 +209,6 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             mDialog = DirectoryChooserFragment.newInstance("DialogSample", null);
             mDialog.show(getFragmentManager(), null);
         }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     @Override

@@ -27,7 +27,35 @@
             android:id="@+id/directoryList"
             android:layout_gravity="center_horizontal"
             android:layout_below="@+id/add_directory"
-            android:layout_above="@+id/start_search" />
+            android:layout_above="@+id/resultCountLinearLayout" />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/start_search"
+            android:id="@+id/resultCountLinearLayout"
+            android:layout_centerHorizontal="true"
+            android:focusableInTouchMode="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Number of results:"
+                android:layout_gravity="center_vertical"
+                android:paddingRight="10dp"
+                android:paddingLeft="10dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:hint="Please insert a number"
+                android:text="10"
+                android:ems="10"
+                android:id="@+id/numberOfResults" />
+
+        </LinearLayout>
 
         <Button
             android:layout_width="wrap_content"
@@ -61,10 +89,42 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="Preparing search..."
+            android:text="@string/preparing_search"
             android:id="@+id/progressText"
             android:layout_below="@+id/progressBar"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="10dp" />
     </RelativeLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/searchResults"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/search_results"
+            android:padding="10dp" />
+
+        <ListView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:id="@+id/searchResultListView"
+            android:layout_gravity="center_horizontal" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/new_search"
+            android:id="@+id/newSearchButton"
+            android:layout_margin="10dp"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
+
+
 </FrameLayout>
