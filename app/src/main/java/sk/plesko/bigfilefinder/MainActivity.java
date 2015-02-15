@@ -2,7 +2,6 @@ package sk.plesko.bigfilefinder;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.DropBoxManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -17,11 +16,13 @@ import net.rdrei.android.dirchooser.DirectoryChooserFragment;
 
 import java.io.File;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import sk.plesko.bigfilefinder.adapter.DirectoryListAdapter;
-import sk.plesko.bigfilefinder.adapter.FileTraverseAsyncTask;
+import sk.plesko.bigfilefinder.helper.FileHelper;
 
 public class MainActivity extends ActionBarActivity implements DirectoryChooserFragment.OnFragmentInteractionListener {
 
@@ -29,7 +30,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private DirectoryChooserFragment mDialog;
     private DirectoryListAdapter mDirectoryListAdapter;
     private ListView mListView;
-    private ConcurrentSkipListMap<Long, String> fileMap;
+    private ConcurrentNavigableMap<Long, List<String>> fileMap;
     private int finished = 0;
     private FileTraverseAsyncTask traverseTask1;
     private FileTraverseAsyncTask traverseTask2;
@@ -43,7 +44,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         mDirectoryListAdapter = new DirectoryListAdapter(this, R.layout.directory_list_item, R.id.pathName);
         mListView.setAdapter(mDirectoryListAdapter);
 
-        fileMap = new ConcurrentSkipListMap<Long, String>(new Comparator<Long>() {
+        fileMap = new ConcurrentSkipListMap<>(new Comparator<Long>() {
             @Override
             public int compare(Long lhs, Long rhs) {
                 return rhs.intValue() - lhs.intValue();
@@ -65,21 +66,29 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
     private void search() {
 
-        OnTraversingFinishedListener onTraversingFinishedListener = new OnTraversingFinishedListener();
+        CountFilesAsyncTask countFilesAsyncTask = new CountFilesAsyncTask(new CountFilesAsyncTask.OnCountFilesFinished() {
+            @Override
+            public void filesCounted(int count) {
+                Log.d(LOG_TAG, "File count: " + count);
 
-        finished = 0;
-        fileMap.clear();
-        traverseTask1 = new FileTraverseAsyncTask(fileMap);
-        traverseTask2 = new FileTraverseAsyncTask(fileMap);
+                OnTraversingFinishedListener onTraversingFinishedListener = new OnTraversingFinishedListener();
+                finished = 0;
+                fileMap.clear();
+                traverseTask1 = new FileTraverseAsyncTask(fileMap);
+                traverseTask2 = new FileTraverseAsyncTask(fileMap);
 
-        traverseTask1.setOnTraversingFinishedListener(onTraversingFinishedListener);
-        traverseTask1.setIdentifier("TR1");
-        traverseTask1.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(0)));
+                traverseTask1.setOnTraversingFinishedListener(onTraversingFinishedListener);
+                traverseTask1.setIdentifier("TR1");
+                traverseTask1.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(0)));
 
-        traverseTask2.setOnTraversingFinishedListener(onTraversingFinishedListener);
-        traverseTask2.setIdentifier("TR2");
-        traverseTask2.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(1)));
+                traverseTask2.setOnTraversingFinishedListener(onTraversingFinishedListener);
+                traverseTask2.setIdentifier("TR2");
+                traverseTask2.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(1)));
 
+            }
+        });
+
+        countFilesAsyncTask.execute(new File(mDirectoryListAdapter.getItem(0)), new File(mDirectoryListAdapter.getItem(1)));
     }
 
     private class OnTraversingFinishedListener implements FileTraverseAsyncTask.OnTraversingFinishedListener {
@@ -88,10 +97,17 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             finished++;
             Log.d(LOG_TAG, "FINISHED: " + finished);
             if (finished == 2) {
-                int i = 0;
-                for (Map.Entry<Long, String> file : fileMap.entrySet()) {
-                    Log.d(LOG_TAG, file.getKey() + ": " + file.getValue());
-                    i++;
+                int i = 1;
+                for (Map.Entry<Long, List<String>> fileMapEntry : fileMap.entrySet()) {
+                    Long fileSize = fileMapEntry.getKey();
+                    List<String> fileList = fileMapEntry.getValue();
+                    for (String file : fileList ) {
+                        Log.d(LOG_TAG, fileSize + ": " + file);
+                        i++;
+                        if (i > 3) {
+                            break;
+                        }
+                    }
                     if (i > 3) {
                         break;
                     }
