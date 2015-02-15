@@ -1,14 +1,11 @@
 package sk.plesko.bigfilefinder;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -17,13 +14,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import net.rdrei.android.dirchooser.DirectoryChooserFragment;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +48,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private int filesSearched = 0;
     private int totalFileCount = 0;
     private int resultCount;
-    private FileTraverseAsyncTask traverseTask1;
-    private FileTraverseAsyncTask traverseTask2;
+    private FileTraverseAsyncTask traverseInternalStorageTask;
+    private FileTraverseAsyncTask traverseExternalStorageTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,6 +109,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         filesSearched = 0;
         totalFileCount = 0;
         resultCount = 0;
+        mDirectoryListAdapter.clear();
 
         mProgressBar.setProgress(0);
         mProgressText.setText(R.string.preparing_search);
@@ -128,7 +126,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             resultCount = Integer.valueOf(mNumberOfResults.getText().toString());
         } catch (NumberFormatException e) {
             mNumberOfResults.setError(getString(R.string.must_be_numeric));
-            mNumberOfResults.requestFocus();
+            return;
         }
 
         // hide software keyboard
@@ -138,6 +136,25 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         mSearchCriteriaView.setVisibility(View.GONE);
         mProgressView.setVisibility(View.VISIBLE);
 
+        final List<File> internalStorageDirectoryList = new ArrayList<>();
+        final List<File> externalStorageDirectoryList = new ArrayList<>();
+        final List<File> directoryList = new ArrayList<>();
+
+        traverseInternalStorageTask = new FileTraverseAsyncTask(fileMap);
+        traverseExternalStorageTask = new FileTraverseAsyncTask(fileMap);
+
+        int selectedDirCount = mDirectoryListAdapter.getCount();
+        for (int i = 0; i < selectedDirCount; i++) {
+            String item = mDirectoryListAdapter.getItem(i);
+            File file = new File(item);
+            if (FileHelper.isOnExternalStorage(item)) {
+                externalStorageDirectoryList.add(file);
+            } else {
+                internalStorageDirectoryList.add(file);
+            }
+            directoryList.add(file);
+        }
+
         CountFilesAsyncTask countFilesAsyncTask = new CountFilesAsyncTask(new CountFilesAsyncTask.OnCountFilesFinished() {
             @Override
             public void filesCounted(int count) {
@@ -146,21 +163,19 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
                 mProgressBar.setMax(count);
 
                 OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
-                traverseTask1 = new FileTraverseAsyncTask(fileMap);
-                traverseTask2 = new FileTraverseAsyncTask(fileMap);
 
-                traverseTask1.setOnTraversingEventsListener(onTraversingFinishedListener);
-                traverseTask1.setIdentifier("TR1");
-                traverseTask1.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(0)));
+                traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+                traverseInternalStorageTask.setIdentifier("INTERNAL");
+                traverseInternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, internalStorageDirectoryList.toArray(new File[internalStorageDirectoryList.size()]));
 
-                traverseTask2.setOnTraversingEventsListener(onTraversingFinishedListener);
-                traverseTask2.setIdentifier("TR2");
-                traverseTask2.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(1)));
+                traverseExternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+                traverseExternalStorageTask.setIdentifier("EXTERNAL");
+                traverseExternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, externalStorageDirectoryList.toArray(new File[externalStorageDirectoryList.size()]));
 
             }
         });
 
-        countFilesAsyncTask.execute(new File(mDirectoryListAdapter.getItem(0)), new File(mDirectoryListAdapter.getItem(1)));
+        countFilesAsyncTask.execute(directoryList.toArray(new File[directoryList.size()]));
     }
 
     private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {

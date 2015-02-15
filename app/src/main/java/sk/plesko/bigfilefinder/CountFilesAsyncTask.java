@@ -1,6 +1,7 @@
 package sk.plesko.bigfilefinder;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import java.io.File;
 
@@ -11,6 +12,7 @@ import sk.plesko.bigfilefinder.helper.FileHelper;
  */
 public class CountFilesAsyncTask extends AsyncTask<File, Void, Integer> {
 
+    private final String LOG_TAG = CountFilesAsyncTask.class.getSimpleName();
     private OnCountFilesFinished onCountFilesFinished;
 
     public CountFilesAsyncTask(OnCountFilesFinished onCountFilesFinished) {

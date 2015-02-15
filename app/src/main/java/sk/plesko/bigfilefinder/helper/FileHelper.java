@@ -1,5 +1,7 @@
 package sk.plesko.bigfilefinder.helper;
 
+import android.os.Environment;
+
 import java.io.File;
 
 /**
@@ -52,6 +54,21 @@ public class FileHelper {
         int exp = (int) (Math.log(bytes) / Math.log(unit));
         String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
         return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+    }
+
+    // TODO: check file for null value and if file exists
+    public static boolean isOnExternalStorage(File file) {
+        return isOnExternalStorage(file.getAbsolutePath());
+    }
+
+    // TODO: check filePath for null value and if file exists
+    public static boolean isOnExternalStorage(String filePath) {
+        String externalStorageState = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(externalStorageState) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState)) {
+            String externalSotagePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+            return filePath.startsWith(externalSotagePath);
+        }
+        return false;
     }
 
     public interface TraverserCallback {
