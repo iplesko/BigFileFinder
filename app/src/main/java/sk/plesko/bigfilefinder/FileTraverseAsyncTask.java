@@ -13,19 +13,19 @@ import sk.plesko.bigfilefinder.helper.FileHelper;
 /**
  * Created by Ivan on 14. 2. 2015.
  */
-public class FileTraverseAsyncTask extends AsyncTask<File, Void, Void> {
+public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
 
     private final String LOG_TAG = FileTraverseAsyncTask.class.getSimpleName();
     private String identifier;
-    private OnTraversingFinishedListener onTraversingFinishedListener = null;
+    private OnTraversingEventsListener onTraversingEventsListener = null;
     private ConcurrentNavigableMap<Long, List<String>> fileMap;
 
     public FileTraverseAsyncTask( ConcurrentNavigableMap<Long, List<String>> fileMap) {
         this.fileMap = fileMap;
     }
 
-    public void setOnTraversingFinishedListener(OnTraversingFinishedListener onTraversingFinishedListener) {
-        this.onTraversingFinishedListener = onTraversingFinishedListener;
+    public void setOnTraversingEventsListener(OnTraversingEventsListener onTraversingEventsListener) {
+        this.onTraversingEventsListener = onTraversingEventsListener;
     }
 
     @Override
@@ -45,6 +45,8 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Void, Void> {
                     list.add(file.getAbsolutePath());
                     fileMap.put(file.length(), list);
                     Log.d(LOG_TAG, "FILE (" + identifier + "): " + file.getAbsolutePath());
+
+                    publishProgress(1);
                 }
             });
         }
@@ -54,8 +56,15 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Void, Void> {
 
     @Override
     protected void onPostExecute(Void aVoid) {
-        if (onTraversingFinishedListener != null) {
-            onTraversingFinishedListener.traversingFinished();
+        if (onTraversingEventsListener != null) {
+            onTraversingEventsListener.traversingFinished();
+        }
+    }
+
+    @Override
+    protected void onProgressUpdate(Integer... values) {
+        for (int fileCount : values) {
+            onTraversingEventsListener.progressUpdate(fileCount);
         }
     }
 
@@ -63,7 +72,8 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Void, Void> {
         this.identifier = identifier;
     }
 
-    public interface OnTraversingFinishedListener {
+    public interface OnTraversingEventsListener {
         public void traversingFinished();
+        public void progressUpdate(int fileCount);
     }
 }

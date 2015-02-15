@@ -8,8 +8,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import net.rdrei.android.dirchooser.DirectoryChooserFragment;
@@ -22,7 +26,6 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import sk.plesko.bigfilefinder.adapter.DirectoryListAdapter;
-import sk.plesko.bigfilefinder.helper.FileHelper;
 
 public class MainActivity extends ActionBarActivity implements DirectoryChooserFragment.OnFragmentInteractionListener {
 
@@ -30,8 +33,14 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private DirectoryChooserFragment mDialog;
     private DirectoryListAdapter mDirectoryListAdapter;
     private ListView mListView;
+    private ViewGroup mSearchCriteriaView;
+    private ViewGroup mProgressView;
+    private ProgressBar mProgressBar;
+    private TextView mProgressText;
     private ConcurrentNavigableMap<Long, List<String>> fileMap;
     private int finished = 0;
+    private int filesSearched = 0;
+    private int totalFileCount = 0;
     private FileTraverseAsyncTask traverseTask1;
     private FileTraverseAsyncTask traverseTask2;
 
@@ -39,6 +48,11 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mSearchCriteriaView = (RelativeLayout) findViewById(R.id.searchCriteria);
+        mProgressView = (RelativeLayout) findViewById(R.id.searchProgress);
+        mProgressText = (TextView) findViewById(R.id.progressText);
+        mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         mListView = (ListView) findViewById(R.id.directoryList);
         mDirectoryListAdapter = new DirectoryListAdapter(this, R.layout.directory_list_item, R.id.pathName);
@@ -66,22 +80,27 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
     private void search() {
 
+        mSearchCriteriaView.setVisibility(View.GONE);
+        mProgressView.setVisibility(View.VISIBLE);
+
         CountFilesAsyncTask countFilesAsyncTask = new CountFilesAsyncTask(new CountFilesAsyncTask.OnCountFilesFinished() {
             @Override
             public void filesCounted(int count) {
-                Log.d(LOG_TAG, "File count: " + count);
 
-                OnTraversingFinishedListener onTraversingFinishedListener = new OnTraversingFinishedListener();
+                totalFileCount = count;
+                mProgressBar.setMax(count);
+
+                OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
                 finished = 0;
                 fileMap.clear();
                 traverseTask1 = new FileTraverseAsyncTask(fileMap);
                 traverseTask2 = new FileTraverseAsyncTask(fileMap);
 
-                traverseTask1.setOnTraversingFinishedListener(onTraversingFinishedListener);
+                traverseTask1.setOnTraversingEventsListener(onTraversingFinishedListener);
                 traverseTask1.setIdentifier("TR1");
                 traverseTask1.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(0)));
 
-                traverseTask2.setOnTraversingFinishedListener(onTraversingFinishedListener);
+                traverseTask2.setOnTraversingEventsListener(onTraversingFinishedListener);
                 traverseTask2.setIdentifier("TR2");
                 traverseTask2.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, new File(mDirectoryListAdapter.getItem(1)));
 
@@ -91,7 +110,14 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         countFilesAsyncTask.execute(new File(mDirectoryListAdapter.getItem(0)), new File(mDirectoryListAdapter.getItem(1)));
     }
 
-    private class OnTraversingFinishedListener implements FileTraverseAsyncTask.OnTraversingFinishedListener {
+    private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {
+        @Override
+        public synchronized void progressUpdate(int fileCount) {
+            filesSearched += fileCount;
+            mProgressBar.setProgress(filesSearched);
+            mProgressText.setText(getString(R.string.progress_info, (int)(filesSearched * 100.0f / totalFileCount), filesSearched, totalFileCount));
+        }
+
         @Override
         public synchronized void traversingFinished() {
             finished++;
