@@ -30,28 +30,45 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
 
     @Override
     protected Void doInBackground(File... params) {
-
         for (File file : params) {
-            FileHelper.traverseTree(file, new FileHelper.TraverserCallback() {
-                @Override
-                public void fileFound(File file) {
-                    long fileSize = file.length();
-                    List<String> list;
-                    if (fileMap.containsKey(fileSize)) {
-                        list = fileMap.get(fileSize);
-                    } else {
-                        list = new ArrayList<String>();
-                    }
-                    list.add(file.getAbsolutePath());
-                    fileMap.put(file.length(), list);
-                    Log.d(LOG_TAG, "FILE (" + identifier + "): " + file.getAbsolutePath());
-
-                    publishProgress(1);
-                }
-            });
+            FileHelper.traverseTree(file, new TraverserCallback());
         }
 
         return null;
+    }
+
+    private class TraverserCallback implements FileHelper.TraverserCallback {
+
+        private long time;
+        private int i = 0;
+
+        public TraverserCallback() {
+            time = System.currentTimeMillis();
+        }
+
+        @Override
+        public void fileFound(File file) {
+            long fileSize = file.length();
+            List<String> list;
+            if (fileMap.containsKey(fileSize)) {
+                list = fileMap.get(fileSize);
+            } else {
+                list = new ArrayList<String>();
+            }
+            list.add(file.getAbsolutePath());
+            fileMap.put(file.length(), list);
+//            Log.d(LOG_TAG, "FILE (" + identifier + "): " + file.getAbsolutePath());
+
+            i++;
+
+            // publish progress every 100 milliseconds
+            long now = System.currentTimeMillis();
+            if (now - time > 100) {
+                publishProgress(i);
+                i = 0;
+                time = now;
+            }
+        }
     }
 
     @Override

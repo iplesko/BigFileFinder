@@ -33,6 +33,7 @@ import sk.plesko.bigfilefinder.helper.FileHelper;
 public class MainActivity extends ActionBarActivity implements DirectoryChooserFragment.OnFragmentInteractionListener {
 
     private final String LOG_TAG = MainActivity.class.getSimpleName();
+
     private DirectoryChooserFragment mDialog;
     private DirectoryListAdapter mDirectoryListAdapter;
     private ListView mListView;
@@ -50,6 +51,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private int resultCount;
     private FileTraverseAsyncTask traverseInternalStorageTask;
     private FileTraverseAsyncTask traverseExternalStorageTask;
+    private NotificationHelper mNotificationHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,8 +98,9 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             }
         });
 
-        init();
+        mNotificationHelper = new NotificationHelper(this);
 
+        init();
     }
 
     private void init() {
@@ -128,6 +131,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             mNumberOfResults.setError(getString(R.string.must_be_numeric));
             return;
         }
+
+        mNotificationHelper.show();
 
         // hide software keyboard
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
@@ -160,7 +165,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             public void filesCounted(int count) {
 
                 totalFileCount = count;
-                mProgressBar.setMax(count);
+                mProgressBar.setMax(totalFileCount);
 
                 OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
 
@@ -184,7 +189,10 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         public synchronized void progressUpdate(int fileCount) {
             filesSearched += fileCount;
             mProgressBar.setProgress(filesSearched);
-            mProgressText.setText(getString(R.string.progress_info, (int)(filesSearched * 100.0f / totalFileCount), filesSearched, totalFileCount));
+            String progressText = getString(R.string.progress_info, (int) (filesSearched * 100.0f / totalFileCount), filesSearched, totalFileCount);
+            mProgressText.setText(progressText);
+
+            mNotificationHelper.show(totalFileCount, filesSearched, progressText);
         }
 
         @Override
@@ -214,6 +222,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
                 mProgressView.setVisibility(View.GONE);
                 mSearchResults.setVisibility(View.VISIBLE);
+
+                mNotificationHelper.finish();
             }
         }
     }
