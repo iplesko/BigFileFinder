@@ -46,6 +46,9 @@ public class FileHelper {
         if (rootDir.exists()) {
             File[] files = rootDir.listFiles();
             for (File file : files) {
+                if (!file.exists()) {
+                    continue;
+                }
                 if (file.isDirectory()) {
                     count += getFileCount(file);
                 } else {
