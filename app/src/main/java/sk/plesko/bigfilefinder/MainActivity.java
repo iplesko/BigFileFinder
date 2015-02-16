@@ -46,13 +46,14 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private EditText mNumberOfResults;
     private ConcurrentNavigableMap<Long, List<String>> fileMap;
     private int finished = 0;
-    private int filesSearched = 0;
-    private int totalFileCount = 0;
+    private int finishedDirectories = 0;
+    private int totalDirectories = 0;
     private int resultCount;
     private FileTraverseAsyncTask traverseInternalStorageTask;
     private FileTraverseAsyncTask traverseExternalStorageTask;
     private NotificationHelper mNotificationHelper;
 
+    // standard onCreate stuff.. finding views, assigning UI elements listeners and options, etc.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,14 +106,15 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         init();
     }
 
+    // initialize view groups visibilities, variables and progerss bar
     private void init() {
         mSearchCriteriaView.setVisibility(View.VISIBLE);
         mProgressView.setVisibility(View.GONE);
         mSearchResults.setVisibility(View.GONE);
         finished = 0;
         fileMap.clear();
-        filesSearched = 0;
-        totalFileCount = 0;
+        finishedDirectories = 0;
+        totalDirectories = 0;
         resultCount = 0;
         mDirectoryListAdapter.clear();
 
@@ -122,11 +124,13 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
     private void search() {
 
+        // make number of results a required field
         if ("".equals(mNumberOfResults.getText().toString().trim())) {
             mNumberOfResults.setError(getString(R.string.required_field));
             return;
         }
 
+        // check if there is a decimal in the number field
         try {
             resultCount = Integer.valueOf(mNumberOfResults.getText().toString());
         } catch (NumberFormatException e) {
@@ -134,20 +138,20 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             return;
         }
 
+        // display notification in the system notification area
         mNotificationHelper.show();
 
         // hide software keyboard
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
         inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
 
+        // set visibilities of view groups, hide search criteria dialog, show progress dialog
         mSearchCriteriaView.setVisibility(View.GONE);
         mProgressView.setVisibility(View.VISIBLE);
 
+        // devide directories to internal and external groups. Each group will be searched by its own thread
         final List<File> internalStorageDirectoryList = new ArrayList<>();
         final List<File> externalStorageDirectoryList = new ArrayList<>();
-
-        traverseInternalStorageTask = new FileTraverseAsyncTask(fileMap);
-        traverseExternalStorageTask = new FileTraverseAsyncTask(fileMap);
 
         int selectedDirCount = mDirectoryListAdapter.getCount();
         for (int i = 0; i < selectedDirCount; i++) {
@@ -162,6 +166,10 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
         OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
 
+        // initialize and start the tasks using thread pool executor
+        traverseInternalStorageTask = new FileTraverseAsyncTask(fileMap);
+        traverseExternalStorageTask = new FileTraverseAsyncTask(fileMap);
+
         traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
         traverseInternalStorageTask.setIdentifier("INTERNAL");
         traverseInternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, internalStorageDirectoryList.toArray(new File[internalStorageDirectoryList.size()]));
@@ -173,21 +181,27 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
     private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {
 
+        // search progress update
         @Override
         public synchronized void progressUpdate(FileTraverseAsyncTask.Progress progress) {
+
             if (progress.getProgressType() == FileTraverseAsyncTask.Progress.PROGRESS_TYPE_DIRECTORY_FINISHED) {
-                filesSearched += progress.getProgress();
+                // if search of a directory finished, increment the progress
+                finishedDirectories += progress.getProgress();
             } else {
-                totalFileCount += progress.getProgress();
+                // if we found new directories, increment total directory count
+                totalDirectories += progress.getProgress();
             }
 
+            // calculate percentual progress
             int progressPercent;
-            if (totalFileCount == 0) {
+            if (totalDirectories == 0) {
                 progressPercent = 0;
             } else {
-                progressPercent = (int) (filesSearched * 100.0f / totalFileCount);
+                progressPercent = (int) (finishedDirectories * 100.0f / totalDirectories);
             }
 
+            // if progress is higher than before, update progress information in notification and in the app
             if (mProgressBar.getProgress() < progressPercent && progressPercent <= 100) {
                 mProgressBar.setProgress(progressPercent);
                 String progressText = getString(R.string.progress_info, progressPercent);
@@ -200,6 +214,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         public synchronized void traversingFinished() {
             finished++;
             Log.d(LOG_TAG, "FINISHED: " + finished);
+
+            // if both of the threads finished, output the results to the result list
             if (finished == 2) {
 
                 ArrayAdapter<String> resultsAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, android.R.id.text1);
@@ -221,9 +237,11 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
                     }
                 }
 
+                // update view group visibilities, hide progress bar, show result screen
                 mProgressView.setVisibility(View.GONE);
                 mSearchResults.setVisibility(View.VISIBLE);
 
+                // make the notification cancellable
                 mNotificationHelper.finish();
             }
         }

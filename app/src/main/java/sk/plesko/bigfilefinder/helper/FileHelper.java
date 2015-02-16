@@ -9,13 +9,21 @@ import java.io.File;
  */
 public class FileHelper {
 
+    /**
+     * Recursively traverses tree from the root, uses callback class to notify about results
+     * @param rootDir can't be null, must be a directory, if not, a IllegalArgumentException exception is thrown
+     * @param traverserCallback the callback class implementing FileHelper.TraverserCallback interface
+     */
     public static void traverseTree(File rootDir, TraverserCallback traverserCallback) {
         if (rootDir == null || !rootDir.isDirectory()) {
             throw new IllegalArgumentException("The rootDir parameter has to be a directory");
         }
 
         if (rootDir.exists()) {
+            // get all files in current directory
             File[] files = rootDir.listFiles();
+
+            // count how many subdirectories there are
             int subDirCount = 0;
             for (File file : files) {
                 if (!file.exists()) {
@@ -25,20 +33,22 @@ public class FileHelper {
                     subDirCount++;
                 }
             }
-
+            // notify about subdirectories found
             traverserCallback.subDirectoriesFound(subDirCount);
 
-
+            // traverse
             for (File file : files) {
                 if (!file.exists()) {
                     continue;
                 }
                 if (file.isDirectory()) {
-                    traverseTree(file, traverserCallback);
+                    traverseTree(file, traverserCallback); // recursion
                 } else {
+                    // notify about file found
                     traverserCallback.fileFound(file);
                 }
             }
+            // notify about directory searched finished
             traverserCallback.directorySearchFinished(rootDir);
         }
     }
