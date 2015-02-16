@@ -31,8 +31,9 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
     @Override
     protected Void doInBackground(File... params) {
         // for all root directories start the tree traversing with the TraverseCallback class
+        TraverserCallback traverserCallback = new TraverserCallback();
         for (File file : params) {
-            FileHelper.traverseTree(file, new TraverserCallback());
+            FileHelper.traverseTree(file, traverserCallback);
         }
 
         return null;
@@ -50,7 +51,7 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
         }
 
         @Override
-        public void fileFound(File file) {
+        public synchronized void fileFound(File file) {
             long fileSize = file.length();
             List<String> list;
             if (fileMap.containsKey(fileSize)) {
