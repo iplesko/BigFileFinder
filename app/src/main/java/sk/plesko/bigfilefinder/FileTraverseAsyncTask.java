@@ -13,7 +13,7 @@ import sk.plesko.bigfilefinder.helper.FileHelper;
 /**
  * Created by Ivan on 14. 2. 2015.
  */
-public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
+public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask.Progress, Void> {
 
     private final String LOG_TAG = FileTraverseAsyncTask.class.getSimpleName();
     private String identifier;
@@ -40,7 +40,9 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
     private class TraverserCallback implements FileHelper.TraverserCallback {
 
         private long time;
+        private long time2;
         private int i = 0;
+        private int j = 0;
 
         public TraverserCallback() {
             time = System.currentTimeMillis();
@@ -58,15 +60,27 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
             list.add(file.getAbsolutePath());
             fileMap.put(file.length(), list);
 //            Log.d(LOG_TAG, "FILE (" + identifier + "): " + file.getAbsolutePath());
+        }
 
-            i++;
-
-            // publish progress every 100 milliseconds
+        @Override
+        public void subDirectoriesFound(int count) {
             long now = System.currentTimeMillis();
+            i += count;
             if (now - time > 100) {
-                publishProgress(i);
+                publishProgress(new Progress(Progress.PROGRESS_TYPE_DIRECTORY_FOUND, i));
                 i = 0;
                 time = now;
+            }
+        }
+
+        @Override
+        public void directorySearchFinished(File file) {
+            long now = System.currentTimeMillis();
+            j++;
+            if (now - time2 > 100) {
+                publishProgress(new Progress(Progress.PROGRESS_TYPE_DIRECTORY_FINISHED, j));
+                j = 0;
+                time2 = now;
             }
         }
     }
@@ -79,9 +93,9 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
     }
 
     @Override
-    protected void onProgressUpdate(Integer... values) {
-        for (int fileCount : values) {
-            onTraversingEventsListener.progressUpdate(fileCount);
+    protected void onProgressUpdate(Progress... progresses) {
+        for (Progress progress : progresses) {
+            onTraversingEventsListener.progressUpdate(progress);
         }
     }
 
@@ -91,6 +105,27 @@ public class FileTraverseAsyncTask extends AsyncTask<File, Integer, Void> {
 
     public interface OnTraversingEventsListener {
         public void traversingFinished();
-        public void progressUpdate(int fileCount);
+        public void progressUpdate(Progress progress);
+    }
+
+    public class Progress {
+        public static final int PROGRESS_TYPE_DIRECTORY_FINISHED = 1;
+        public static final int PROGRESS_TYPE_DIRECTORY_FOUND = 2;
+
+        private int progressType;
+        private int progress;
+
+        public Progress(int progressType, int progress) {
+            this.progressType = progressType;
+            this.progress = progress;
+        }
+
+        public int getProgressType() {
+            return progressType;
+        }
+
+        public int getProgress() {
+            return progress;
+        }
     }
 }

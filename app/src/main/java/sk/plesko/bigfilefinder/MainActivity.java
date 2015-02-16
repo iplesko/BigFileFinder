@@ -65,6 +65,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
         mNumberOfResults = (EditText) findViewById(R.id.numberOfResults);
 
+        mProgressBar.setMax(100);
+
         resultCount = Integer.valueOf(mNumberOfResults.getText().toString());
 
         mListView = (ListView) findViewById(R.id.directoryList);
@@ -143,7 +145,6 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
         final List<File> internalStorageDirectoryList = new ArrayList<>();
         final List<File> externalStorageDirectoryList = new ArrayList<>();
-        final List<File> directoryList = new ArrayList<>();
 
         traverseInternalStorageTask = new FileTraverseAsyncTask(fileMap);
         traverseExternalStorageTask = new FileTraverseAsyncTask(fileMap);
@@ -157,42 +158,42 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             } else {
                 internalStorageDirectoryList.add(file);
             }
-            directoryList.add(file);
         }
 
-        CountFilesAsyncTask countFilesAsyncTask = new CountFilesAsyncTask(new CountFilesAsyncTask.OnCountFilesFinished() {
-            @Override
-            public void filesCounted(int count) {
+        OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
 
-                totalFileCount = count;
-                mProgressBar.setMax(totalFileCount);
+        traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+        traverseInternalStorageTask.setIdentifier("INTERNAL");
+        traverseInternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, internalStorageDirectoryList.toArray(new File[internalStorageDirectoryList.size()]));
 
-                OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
-
-                traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
-                traverseInternalStorageTask.setIdentifier("INTERNAL");
-                traverseInternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, internalStorageDirectoryList.toArray(new File[internalStorageDirectoryList.size()]));
-
-                traverseExternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
-                traverseExternalStorageTask.setIdentifier("EXTERNAL");
-                traverseExternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, externalStorageDirectoryList.toArray(new File[externalStorageDirectoryList.size()]));
-
-            }
-        });
-
-        countFilesAsyncTask.execute(directoryList.toArray(new File[directoryList.size()]));
+        traverseExternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+        traverseExternalStorageTask.setIdentifier("EXTERNAL");
+        traverseExternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, externalStorageDirectoryList.toArray(new File[externalStorageDirectoryList.size()]));
     }
 
     private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {
 
         @Override
-        public synchronized void progressUpdate(int fileCount) {
-            filesSearched += fileCount;
-            mProgressBar.setProgress(filesSearched);
-            String progressText = getString(R.string.progress_info, (int) (filesSearched * 100.0f / totalFileCount), filesSearched, totalFileCount);
-            mProgressText.setText(progressText);
+        public synchronized void progressUpdate(FileTraverseAsyncTask.Progress progress) {
+            if (progress.getProgressType() == FileTraverseAsyncTask.Progress.PROGRESS_TYPE_DIRECTORY_FINISHED) {
+                filesSearched += progress.getProgress();
+            } else {
+                totalFileCount += progress.getProgress();
+            }
 
-            mNotificationHelper.show(totalFileCount, filesSearched, progressText);
+            int progressPercent;
+            if (totalFileCount == 0) {
+                progressPercent = 0;
+            } else {
+                progressPercent = (int) (filesSearched * 100.0f / totalFileCount);
+            }
+
+            if (mProgressBar.getProgress() < progressPercent && progressPercent <= 100) {
+                mProgressBar.setProgress(progressPercent);
+                String progressText = getString(R.string.progress_info, progressPercent);
+                mProgressText.setText(progressText);
+                mNotificationHelper.show(100, progressPercent, progressText);
+            }
         }
 
         @Override

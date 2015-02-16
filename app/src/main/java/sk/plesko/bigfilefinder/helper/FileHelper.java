@@ -16,6 +16,15 @@ public class FileHelper {
 
         if (rootDir.exists()) {
             File[] files = rootDir.listFiles();
+            int subDirCount = 0;
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    subDirCount++;
+                }
+            }
+            traverserCallback.subDirectoriesFound(subDirCount);
+
+
             for (File file : files) {
                 if (file.isDirectory()) {
                     traverseTree(file, traverserCallback);
@@ -23,6 +32,7 @@ public class FileHelper {
                     traverserCallback.fileFound(file);
                 }
             }
+            traverserCallback.directorySearchFinished(rootDir);
         }
     }
 
@@ -73,6 +83,8 @@ public class FileHelper {
 
     public interface TraverserCallback {
         public void fileFound(File file);
+        public void subDirectoriesFound(int count);
+        public void directorySearchFinished(File file);
     }
 
 }
