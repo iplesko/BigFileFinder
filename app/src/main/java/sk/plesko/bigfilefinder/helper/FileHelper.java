@@ -18,14 +18,21 @@ public class FileHelper {
             File[] files = rootDir.listFiles();
             int subDirCount = 0;
             for (File file : files) {
+                if (!file.exists()) {
+                    continue;
+                }
                 if (file.isDirectory()) {
                     subDirCount++;
                 }
             }
+
             traverserCallback.subDirectoriesFound(subDirCount);
 
 
             for (File file : files) {
+                if (!file.exists()) {
+                    continue;
+                }
                 if (file.isDirectory()) {
                     traverseTree(file, traverserCallback);
                 } else {
@@ -34,30 +41,6 @@ public class FileHelper {
             }
             traverserCallback.directorySearchFinished(rootDir);
         }
-    }
-
-    public static int getFileCount(File rootDir) {
-        if (rootDir == null || !rootDir.isDirectory()) {
-            throw new IllegalArgumentException("The rootDir parameter has to be a directory");
-        }
-
-        int count = 0;
-
-        if (rootDir.exists()) {
-            File[] files = rootDir.listFiles();
-            for (File file : files) {
-                if (!file.exists()) {
-                    continue;
-                }
-                if (file.isDirectory()) {
-                    count += getFileCount(file);
-                } else {
-                    count++;
-                }
-            }
-        }
-
-        return count;
     }
 
     // taken from http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java#answer-3758880
