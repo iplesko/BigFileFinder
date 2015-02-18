@@ -1,7 +1,6 @@
 package sk.plesko.bigfilefinder;
 
 import android.os.AsyncTask;
-import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -50,6 +49,12 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
             time = time2 = System.currentTimeMillis();
         }
 
+        // when file is found, add it to the fileMap, keep in mind, that key for the map is file size and that multiple files can have the same size
+        // so we have a map of lists.
+        // NOTE: this method has to be synchronized, because fileMap.put is thread-safe, but "list = fileMap.get, list.add, fileMap.put" is not
+        //
+        // TODO: maybe atomicity of this operation (synchronized keyword) slows down insertion to the map, test it (with some benchmark test) and
+        //       fix if needed (it will probably require to change structure of the collection - some thread-safe priority queue?)
         @Override
         public synchronized void fileFound(File file) {
             long fileSize = file.length();
