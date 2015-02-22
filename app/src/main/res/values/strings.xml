@@ -13,7 +13,7 @@
     <string name="must_be_numeric">This has to be a number</string>
     <string name="new_search">New search</string>
     <string name="search_results">Search results</string>
-    <string name="preparing_search">Finished: 0%%</string>
+    <string name="preparing_search">Finished: 0%</string>
     <string name="searching">Searching biggest files</string>
     <string name="search_complete">Search complete</string>
 
