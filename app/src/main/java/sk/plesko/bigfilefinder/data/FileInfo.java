@@ -37,6 +37,7 @@ public final class FileInfo implements Comparable<FileInfo> {
         return String.format("%.1f %sB", size / Math.pow(unit, exp), pre);
     }
 
+    // NOTE: the compareTo method evaluates bigger files as less than smaller files, because we want to have them sorted from the biggest to the smallest
     @Override
     public int compareTo(FileInfo another) {
         // the following line is nicer, but it works from API level 19, we want this app to work on API level 15
