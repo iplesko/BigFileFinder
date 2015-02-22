@@ -23,11 +23,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import sk.plesko.bigfilefinder.adapter.DirectoryListAdapter;
+import sk.plesko.bigfilefinder.data.FileInfo;
 import sk.plesko.bigfilefinder.helper.FileHelper;
 
 public class MainActivity extends ActionBarActivity implements DirectoryChooserFragment.OnFragmentInteractionListener {
@@ -44,7 +44,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private ProgressBar mProgressBar;
     private TextView mProgressText;
     private EditText mNumberOfResults;
-    private ConcurrentNavigableMap<Long, List<String>> fileMap;
+    private BlockingQueue<FileInfo> files;
     private int finished = 0;
     private int finishedDirectories = 0;
     private int totalDirectories = 0;
@@ -76,12 +76,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
 
         mSearchResultListView = (ListView) findViewById(R.id.searchResultListView);
 
-        fileMap = new ConcurrentSkipListMap<>(new Comparator<Long>() {
-            @Override
-            public int compare(Long lhs, Long rhs) {
-                return rhs.intValue() - lhs.intValue();
-            }
-        });
+        files = new PriorityBlockingQueue<>();
 
         Button addDirectoryButton = (Button) findViewById(R.id.add_directory);
         addDirectoryButton.setOnClickListener(new AddDirectoryButtonClickListener());
@@ -112,7 +107,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         mProgressView.setVisibility(View.GONE);
         mSearchResults.setVisibility(View.GONE);
         finished = 0;
-        fileMap.clear();
+        files.clear();
         finishedDirectories = 0;
         totalDirectories = 0;
         resultCount = 0;
@@ -167,8 +162,8 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
         OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
 
         // initialize and start the tasks using thread pool executor
-        traverseInternalStorageTask = new FileTraverseAsyncTask(fileMap);
-        traverseExternalStorageTask = new FileTraverseAsyncTask(fileMap);
+        traverseInternalStorageTask = new FileTraverseAsyncTask(files);
+        traverseExternalStorageTask = new FileTraverseAsyncTask(files);
 
         traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
         traverseInternalStorageTask.setIdentifier("INTERNAL");
@@ -222,17 +217,12 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
                 mSearchResultListView.setAdapter(resultsAdapter);
 
                 int i = 1;
-                for (Map.Entry<Long, List<String>> fileMapEntry : fileMap.entrySet()) {
-                    Long fileSize = fileMapEntry.getKey();
-                    List<String> fileList = fileMapEntry.getValue();
-                    for (String file : fileList) {
-                        resultsAdapter.add(file + " (" + FileHelper.humanReadableByteCount(fileSize, false) + ")");
-                        i++;
-                        if (i > resultCount) {
-                            break;
-                        }
-                    }
-                    if (i > resultCount) {
+
+                // add results to the list view
+                FileInfo fileInfo;
+                while ((fileInfo = files.poll()) != null) {
+                    resultsAdapter.add(fileInfo.getName() + "(" + fileInfo.getSizeFormatted() + ")");
+                    if (++i > resultCount) {
                         break;
                     }
                 }

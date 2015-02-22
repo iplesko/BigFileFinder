@@ -5,8 +5,11 @@ import android.os.AsyncTask;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.PriorityBlockingQueue;
 
+import sk.plesko.bigfilefinder.data.FileInfo;
 import sk.plesko.bigfilefinder.helper.FileHelper;
 
 /**
@@ -17,9 +20,9 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
     private final String LOG_TAG = FileTraverseAsyncTask.class.getSimpleName();
     private String identifier;
     private OnTraversingEventsListener onTraversingEventsListener = null;
-    private ConcurrentNavigableMap<Long, List<String>> fileMap;
+    private BlockingQueue<FileInfo> fileMap;
 
-    public FileTraverseAsyncTask( ConcurrentNavigableMap<Long, List<String>> fileMap) {
+    public FileTraverseAsyncTask(BlockingQueue<FileInfo> fileMap) {
         this.fileMap = fileMap;
     }
 
@@ -49,24 +52,10 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
             time = time2 = System.currentTimeMillis();
         }
 
-        // when file is found, add it to the fileMap, keep in mind, that key for the map is file size and that multiple files can have the same size
-        // so we have a map of lists.
-        // NOTE: this method has to be synchronized, because fileMap.put is thread-safe, but "list = fileMap.get, list.add, fileMap.put" is not
-        //
-        // TODO: maybe atomicity of this operation (synchronized keyword) slows down insertion to the map, test it (with some benchmark test) and
-        //       fix if needed (it will probably require to change structure of the collection - some thread-safe priority queue?)
+        // add file to collection
         @Override
-        public synchronized void fileFound(File file) {
-            long fileSize = file.length();
-            List<String> list;
-            if (fileMap.containsKey(fileSize)) {
-                list = fileMap.get(fileSize);
-            } else {
-                list = new ArrayList<String>();
-            }
-            list.add(file.getAbsolutePath());
-            fileMap.put(file.length(), list);
-//            Log.d(LOG_TAG, "FILE (" + identifier + "): " + file.getAbsolutePath());
+        public void fileFound(File file) {
+            fileMap.offer(new FileInfo(file));
         }
 
         @Override
