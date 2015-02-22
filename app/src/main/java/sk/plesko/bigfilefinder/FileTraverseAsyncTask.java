@@ -16,10 +16,10 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
     private final String LOG_TAG = FileTraverseAsyncTask.class.getSimpleName();
     private String identifier;
     private TraversingEventsListener traversingEventsListener = null;
-    private PriorityBlockingQueue<FileInfo> fileMap;
+    private PriorityBlockingQueue<FileInfo> files;
 
-    public FileTraverseAsyncTask(PriorityBlockingQueue<FileInfo> fileMap) {
-        this.fileMap = fileMap;
+    public FileTraverseAsyncTask(PriorityBlockingQueue<FileInfo> files) {
+        this.files = files;
     }
 
     public void setTraversingEventsListener(TraversingEventsListener traversingEventsListener) {
@@ -51,7 +51,7 @@ public class FileTraverseAsyncTask extends AsyncTask<File, FileTraverseAsyncTask
         // add file to collection
         @Override
         public void fileFound(File file) {
-            fileMap.offer(new FileInfo(file));
+            files.offer(new FileInfo(file));
         }
 
         @Override
