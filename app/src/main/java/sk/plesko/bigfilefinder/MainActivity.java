@@ -21,9 +21,7 @@ import net.rdrei.android.dirchooser.DirectoryChooserFragment;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import sk.plesko.bigfilefinder.adapter.DirectoryListAdapter;
@@ -44,7 +42,7 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
     private ProgressBar mProgressBar;
     private TextView mProgressText;
     private EditText mNumberOfResults;
-    private BlockingQueue<FileInfo> files;
+    private PriorityBlockingQueue<FileInfo> files;
     private int finished = 0;
     private int finishedDirectories = 0;
     private int totalDirectories = 0;
@@ -159,22 +157,22 @@ public class MainActivity extends ActionBarActivity implements DirectoryChooserF
             }
         }
 
-        OnTraversingEventsListener onTraversingFinishedListener = new OnTraversingEventsListener();
+        TraversingEventsListener traversingEventsListener = new TraversingEventsListener();
 
         // initialize and start the tasks using thread pool executor
         traverseInternalStorageTask = new FileTraverseAsyncTask(files);
         traverseExternalStorageTask = new FileTraverseAsyncTask(files);
 
-        traverseInternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+        traverseInternalStorageTask.setTraversingEventsListener(traversingEventsListener);
         traverseInternalStorageTask.setIdentifier("INTERNAL");
         traverseInternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, internalStorageDirectoryList.toArray(new File[internalStorageDirectoryList.size()]));
 
-        traverseExternalStorageTask.setOnTraversingEventsListener(onTraversingFinishedListener);
+        traverseExternalStorageTask.setTraversingEventsListener(traversingEventsListener);
         traverseExternalStorageTask.setIdentifier("EXTERNAL");
         traverseExternalStorageTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, externalStorageDirectoryList.toArray(new File[externalStorageDirectoryList.size()]));
     }
 
-    private class OnTraversingEventsListener implements FileTraverseAsyncTask.OnTraversingEventsListener {
+    private class TraversingEventsListener implements FileTraverseAsyncTask.TraversingEventsListener {
 
         // search progress update
         @Override
